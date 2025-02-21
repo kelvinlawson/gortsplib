@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -32,6 +33,10 @@ func firstFormat(formats map[uint8]*serverStreamFormat) *serverStreamFormat {
 type ServerStream struct {
 	s    *Server
 	desc *description.Session
+	// Stream-specific Multicast settings (optional, will use main Server settings if not present)
+	multicastIP       *net.IP
+	multicastRTPPort  *int
+	multicastRTCPPort *int
 
 	mutex                sync.RWMutex
 	readers              map[*ServerSession]struct{}
@@ -46,6 +51,32 @@ func NewServerStream(s *Server, desc *description.Session) *ServerStream {
 	st := &ServerStream{
 		s:                    s,
 		desc:                 desc,
+		readers:              make(map[*ServerSession]struct{}),
+		activeUnicastReaders: make(map[*ServerSession]struct{}),
+	}
+
+	st.medias = make(map[*description.Media]*serverStreamMedia, len(desc.Medias))
+	for i, medi := range desc.Medias {
+		sm := &serverStreamMedia{
+			st:      st,
+			media:   medi,
+			trackID: i,
+		}
+		sm.initialize()
+		st.medias[medi] = sm
+	}
+
+	return st
+}
+
+// NewServerStreamWithMulticast allocates a ServerStream with Multicast settings
+func NewServerStreamWithMulticast(s *Server, desc *description.Session, multicastIP *net.IP, multicastRTPPort *int, multicastRTCPPort *int) *ServerStream {
+	st := &ServerStream{
+		s:                    s,
+		desc:                 desc,
+		multicastIP:          multicastIP,
+		multicastRTPPort:     multicastRTPPort,
+		multicastRTCPPort:    multicastRTCPPort,
 		readers:              make(map[*ServerSession]struct{}),
 		activeUnicastReaders: make(map[*ServerSession]struct{}),
 	}

@@ -8,6 +8,9 @@ import (
 
 type serverMulticastWriter struct {
 	s *Server
+	requestedIP       *net.IP
+	requestedRTPPort  *int
+	requestedRTCPPort *int
 
 	rtpl     *serverUDPListener
 	rtcpl    *serverUDPListener
@@ -21,12 +24,25 @@ func (h *serverMulticastWriter) initialize() error {
 	if err != nil {
 		return err
 	}
+	rtpPort := h.s.MulticastRTPPort
+	rtcpPort := h.s.MulticastRTCPPort
+
+	// Override global server multicast settings if requested for this particular stream
+	if h.requestedIP != nil {
+		ip = *h.requestedIP
+	}
+	if h.requestedRTPPort != nil {
+		rtpPort = *h.requestedRTPPort
+	}
+	if h.requestedRTCPPort != nil {
+		rtcpPort = *h.requestedRTCPPort
+	}
 
 	rtpl, rtcpl, err := createUDPListenerMulticastPair(
 		h.s.ListenPacket,
 		h.s.WriteTimeout,
-		h.s.MulticastRTPPort,
-		h.s.MulticastRTCPPort,
+		rtpPort,
+		rtcpPort,
 		ip,
 	)
 	if err != nil {

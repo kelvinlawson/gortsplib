@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net"
 	"sync"
 
 	"github.com/pion/rtp"
@@ -88,7 +89,17 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// create the stream and save the publisher
-	sh.stream = gortsplib.NewServerStream(sh.s, ctx.Description)
+
+        // Use global Server configuration for multicast IP address range and ports
+	//sh.stream = gortsplib.NewServerStream(sh.s, ctx.Description)
+	//sh.stream = gortsplib.NewServerStreamWithMulticast(sh.s, ctx.Description, nil, nil, nil)
+
+        // Use stream-specific IP address and ports
+	multicastIP := net.ParseIP("224.1.0.99")
+	multicastRTPPort := int(8002)
+	multicastRTCPPort := int(8003)
+	sh.stream = gortsplib.NewServerStreamWithMulticast(sh.s, ctx.Description, &multicastIP, &multicastRTPPort, &multicastRTCPPort)
+
 	sh.publisher = ctx.Session
 
 	return &base.Response{
